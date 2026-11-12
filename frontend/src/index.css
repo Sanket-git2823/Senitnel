@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Sentinel — Graphite / Institutional Design System */
+    --canvas: #151719;
+    --surface: #1C1F22;
+    --elevated: #24282B;
+    --divider: #34393D;
+    
+    --text-primary: #E3E5E6;
+    --text-secondary: #969DA2;
+    --text-muted: #6B7278;
+    
+    --accent: #B1A078;
+    --accent-hover: #C5B58D;
+    --status-ok: #638D7D;
+    --status-warn: #C09853;
+    --status-crit: #B85555;
+    --status-info: #5B84A1;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum" on;
+    letter-spacing: -0.011em;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: -0.02em;
+  }
+
+  #root {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: var(--canvas);
+  }
+}
+
+/* Restrained scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2A2F33; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #34393D; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #2A2F33; border-radius: 2px; }
+
+/* Accessible focus outline */
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle transitions only where purposeful */
+.surface-transition {
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}

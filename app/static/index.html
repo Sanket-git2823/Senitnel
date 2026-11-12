@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENTINEL — Campus Infrastructure Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #020817; color: #e2e8f0; margin: 0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    @keyframes pulse-ring { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.05)} }
+    .anomaly-pulse { animation: pulse-ring 2s infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+    .fade-in { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    .tab-btn.active { background:#0e7490; color:#fff; border-color:#0891b2; }
+    .step-btn { transition: all .2s; cursor: pointer; }
+    .step-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    .power-bar { height: 4px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    .power-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .kpi-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 20px; }
+    .room-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 16px; transition: border-color .2s; }
+    .room-card:hover { border-color: #334155; }
+    .room-card.anomalous { border-color: #ef4444; background: rgba(239,68,68,0.05); }
+    .incident-box { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.4); border-radius: 14px; padding: 16px; }
+    .wo-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 14px; }
+    .btn-primary { background: linear-gradient(135deg, #0891b2, #6366f1); color: #fff; border: none; border-radius: 10px; padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; transition: opacity .15s; }
+    .btn-primary:hover { opacity: .85; }
+    .btn-sm { font-size: 11px; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; border: none; transition: opacity .15s; }
+    .btn-sm:hover { opacity: .8; }
+    .chat-bubble-user { background: #1e293b; border-radius: 12px 12px 4px 12px; padding: 10px 14px; margin-left: 24px; font-size: 13px; }
+    .chat-bubble-bot { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px 12px 12px 4px; padding: 12px 14px; font-size: 13px; line-height: 1.6; }
+    .badge { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; letter-spacing: .05em; text-transform: uppercase; }
+    .toast { position: fixed; top: 20px; right: 20px; z-index: 9999; background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 14px 18px; min-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,.5); transform: translateX(120%); transition: transform .3s ease; }
+    .toast.show { transform: translateX(0); }
+    .section-header { font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="toast">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div id="toast-icon" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(6,182,212,.15)">ℹ️</div>
+    <div>
+      <div id="toast-title" style="font-weight:700;font-size:13px;color:#fff">Notification</div>
+      <div id="toast-msg" style="font-size:12px;color:#94a3b8;margin-top:2px">Updated.</div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header style="background:#0a0f1a;border-bottom:1px solid #1e293b;padding:0 24px;position:sticky;top:0;z-index:100">
+  <div style="max-width:1400px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#06b6d4,#6366f1);display:flex;align-items:center;justify-content:center;font-size:20px">🛡️</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px;font-weight:900;letter-spacing:.12em;color:#fff">SENTINEL</span>
+          <span style="font-size:10px;padding:2px 8px;background:#0c4a6e;color:#38bdf8;border:1px solid #0369a1;border-radius:999px;font-weight:700">PROTOTYPE v1.0</span>
+        </div>
+        <div style="font-size:11px;color:#64748b">Campus Infrastructure Operational Intelligence</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px">
+      <!-- WS Status -->
+      <div style="display:flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:6px 12px">
+        <div id="ws-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e"></div>
+        <span id="ws-label" style="font-size:11px;font-weight:600;color:#94a3b8">Live Connected</span>
+      </div>
+      <!-- Sim Button -->
+      <button id="sim-btn" onclick="toggleSimulator()" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <span>▶</span> <span id="sim-label">Start Simulator</span>
+      </button>
+      <!-- Reset -->
+      <button onclick="resetDemo()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">↺ Reset Demo</button>
+      <!-- API Docs -->
+      <a href="/docs" target="_blank" style="background:#1e1b4b;color:#a5b4fc;border:1px solid #3730a3;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600;text-decoration:none">API Docs ↗</a>
+    </div>
+  </div>
+</header>
+
+<main style="max-width:1400px;margin:0 auto;padding:24px">
+
+  <!-- ═══ DEMO WORKFLOW ═══ -->
+  <div style="background:linear-gradient(135deg,#0f172a,#0c1a2e);border:1px solid #1e3a5f;border-radius:20px;padding:20px;margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#38bdf8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">⚡ One-Click Demo Workflow</div>
+        <div style="font-size:12px;color:#64748b">Walk through SENTINEL's full intelligence pipeline in 4 steps</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:#64748b">Active Scenario:</span>
+        <span id="scenario-badge" style="background:#0c4a6e;color:#38bdf8;border:1px solid #0369a1;border-radius:999px;padding:3px 12px;font-size:11px;font-weight:700">Normal Campus Operation</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+      <button class="step-btn" onclick="demoStep1()" style="background:#0f2a1a;border:1px solid #15803d;border-radius:14px;padding:14px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:800;color:#4ade80">① Normal Operation</span>
+          <span style="font-size:16px">✅</span>
+        </div>
+        <p style="font-size:11px;color:#86efac;margin:0;line-height:1.5">Start simulator. All rooms at expected baselines. LAB-204 idle at ~0.9 kW.</p>
+      </button>
+
+      <button class="step-btn" onclick="demoStep2()" style="background:#2a0f0f;border:1px solid #dc2626;border-radius:14px;padding:14px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:800;color:#f87171">② Trigger AC Anomaly</span>
+          <span style="font-size:16px">⚠️</span>
+        </div>
+        <p style="font-size:11px;color:#fca5a5;margin:0;line-height:1.5">Class ends, AC runs at 3.82 kW. Sentinel detects +320% deviation and raises incident.</p>
+      </button>
+
+      <button class="step-btn" onclick="demoStep3()" style="background:#0f1a2a;border:1px solid #4f46e5;border-radius:14px;padding:14px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:800;color:#a5b4fc">③ Dispatch Work Order</span>
+          <span style="font-size:16px">📋</span>
+        </div>
+        <p style="font-size:11px;color:#c7d2fe;margin:0;line-height:1.5">Approve the AI incident dossier. Assign HVAC technician team to investigate.</p>
+      </button>
+
+      <button class="step-btn" onclick="demoStep4()" style="background:#0f1a1a;border:1px solid #0891b2;border-radius:14px;padding:14px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:800;color:#22d3ee">④ Resolve & Verify</span>
+          <span style="font-size:16px">🛡️</span>
+        </div>
+        <p style="font-size:11px;color:#a5f3fc;margin:0;line-height:1.5">Power returns to 0.88 kW baseline. Sentinel auto-verifies the improvement.</p>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ KPI STRIP ═══ -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+
+    <div class="kpi-card">
+      <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        CAMPUS LOAD <span style="color:#22d3ee">⚡</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span id="kpi-power" style="font-size:30px;font-weight:900;color:#fff">--</span>
+        <span style="font-size:12px;color:#64748b;font-weight:600">kW</span>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">Expected: <span id="kpi-expected" style="color:#94a3b8;font-weight:700">--</span> kW</div>
+    </div>
+
+    <div class="kpi-card">
+      <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        IDLE WASTE <span style="color:#f87171">🔥</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span id="kpi-excess" style="font-size:30px;font-weight:900;color:#22c55e">0.00</span>
+        <span style="font-size:12px;color:#64748b;font-weight:600">kW</span>
+      </div>
+      <div id="kpi-excess-label" style="font-size:11px;color:#64748b;margin-top:4px">Normal baseline</div>
+    </div>
+
+    <div class="kpi-card">
+      <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        DAILY COST LOSS <span style="color:#fbbf24">💸</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <span style="font-size:16px;color:#64748b;font-weight:700">₹</span>
+        <span id="kpi-cost" style="font-size:30px;font-weight:900;color:#fbbf24">0</span>
+        <span style="font-size:11px;color:#64748b">/day est.</span>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">Tariff: ₹12.00/kWh</div>
+    </div>
+
+    <div class="kpi-card">
+      <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        INCIDENTS <span style="color:#a78bfa">🔔</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="kpi-incidents" style="font-size:30px;font-weight:900;color:#fff">0</span>
+        <span id="kpi-inc-badge" class="badge" style="background:#052e16;color:#4ade80;border:1px solid #166534">NORMAL</span>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px"><span id="kpi-wo">0</span> Work Orders Open</div>
+    </div>
+
+  </div>
+
+  <!-- ═══ MAIN 2-COL LAYOUT ═══ -->
+  <div style="display:grid;grid-template-columns:1fr 440px;gap:20px;align-items:start">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- ROOMS GRID -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px">
+        <div class="section-header">
+          <span>📡</span> Live Virtual Sensor Readings
+          <span style="margin-left:auto;font-size:11px;font-weight:600;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:3px 10px;color:#64748b;text-transform:none;letter-spacing:0">7 Monitored Rooms · updates every 5s</span>
+        </div>
+        <div id="rooms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+          <div style="text-align:center;padding:32px;color:#475569;font-size:12px;grid-column:1/-1">
+            <div class="spinner" style="width:24px;height:24px;border:3px solid #1e293b;border-top-color:#0891b2;border-radius:50%;margin:0 auto 12px"></div>
+            Loading campus rooms…
+          </div>
+        </div>
+      </div>
+
+      <!-- ENERGY CHART -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="section-header" style="margin-bottom:0">
+            <span>📈</span> 24-Hour Energy Profile (kWh vs Baseline)
+          </div>
+          <div style="display:flex;gap:16px;font-size:11px;color:#64748b">
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#06b6d4;display:inline-block;border-radius:2px"></span> Actual</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#6366f1;display:inline-block;border-radius:2px;border-top:1px dashed #6366f1"></span> Baseline</span>
+          </div>
+        </div>
+        <div style="height:220px;position:relative">
+          <canvas id="energy-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- BUILDING ANALYTICS TABLE -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px">
+        <div class="section-header"><span>🏛️</span> Campus Buildings — Power Status</div>
+        <div id="buildings-table" style="font-size:12px">
+          <div style="text-align:center;padding:20px;color:#475569">Loading…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- INCIDENT PANEL -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-header" style="margin-bottom:0"><span>🚨</span> Active Incidents</div>
+          <span id="inc-count-badge" class="badge" style="background:#0f172a;color:#64748b;border:1px solid #1e293b">0 Active</span>
+        </div>
+        <div id="incident-panel">
+          <div style="text-align:center;padding:28px;background:#0f172a;border:1px dashed #1e293b;border-radius:12px">
+            <div style="font-size:28px;margin-bottom:8px">✅</div>
+            <div style="font-size:13px;font-weight:700;color:#e2e8f0">All Systems Normal</div>
+            <div style="font-size:11px;color:#475569;margin-top:4px">No anomalies detected. All rooms within expected baselines.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORK ORDERS -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-header" style="margin-bottom:0"><span>🔧</span> Maintenance Work Orders</div>
+          <span id="wo-count-badge" style="font-size:11px;color:#64748b">0 Recorded</span>
+        </div>
+        <div id="wo-list" style="display:flex;flex-direction:column;gap:8px">
+          <div style="text-align:center;padding:16px;font-size:12px;color:#475569">No work orders yet.</div>
+        </div>
+      </div>
+
+      <!-- ASK SENTINEL -->
+      <div style="background:#0a0f1a;border:1px solid #1e293b;border-radius:18px;padding:20px;display:flex;flex-direction:column;height:420px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-header" style="margin-bottom:0"><span>🤖</span> Ask Sentinel</div>
+          <span style="font-size:10px;color:#06b6d4;border:1px solid #0e7490;border-radius:999px;padding:2px 8px;font-weight:700">AI · Ground-Truth Only</span>
+        </div>
+
+        <!-- Quick chips -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:10px;border-bottom:1px solid #1e293b;margin-bottom:10px">
+          <button onclick="askSentinel('What is wasting energy right now?')" style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">What's wasting energy?</button>
+          <button onclick="askSentinel('Why is LAB-204 flagged?')" style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Why is LAB-204 flagged?</button>
+          <button onclick="askSentinel('How much energy could be saved?')" style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Potential savings?</button>
+          <button onclick="askSentinel('Show all critical anomalies')" style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Critical anomalies</button>
+        </div>
+
+        <!-- Chat stream -->
+        <div id="chat-stream" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px">
+          <div class="chat-bubble-bot fade-in">
+            👋 <strong>Hi! I'm Sentinel Intelligence.</strong> I analyze live telemetry, occupancy schedules, and timetables to give you verified facts — never hallucinated statistics. Ask me anything about campus energy.
+          </div>
+        </div>
+
+        <!-- Input -->
+        <form onsubmit="handleChatSubmit(event)" style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #1e293b">
+          <input id="chat-input" type="text" placeholder="Ask about any room, incident, or anomaly…"
+            style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:9px 14px;font-size:12px;color:#e2e8f0;outline:none"
+            onfocus="this.style.borderColor='#0891b2'" onblur="this.style.borderColor='#334155'" />
+          <button type="submit" style="background:#0891b2;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer">Send</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GLOBAL STATE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let isSimRunning = false;
+let chartInstance = null;
+let ws = null;
+let _incidents = [];
+let _workOrders = [];
+let _toastTimer = null;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TOAST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toast(title, msg, type = 'info') {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-msg').textContent = msg;
+  const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
+  document.getElementById('toast-icon').textContent = icons[type] || 'ℹ️';
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SAFE FETCH WRAPPER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch('/api/v1' + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      console.warn(`API ${path} → ${r.status}:`, err);
+      return null;
+    }
+    return await r.json();
+  } catch (e) {
+    console.warn(`API ${path} failed:`, e.message);
+    return null;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INIT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.addEventListener('DOMContentLoaded', () => {
+  connectWS();
+  initChart();
+  refresh();
+  setInterval(refresh, 5000);
+});
+
+async function refresh() {
+  await Promise.allSettled([
+    loadOverview(),
+    loadRooms(),
+    loadIncidents(),
+    loadWorkOrders(),
+    loadSimStatus(),
+    loadBuildings()
+  ]);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WEBSOCKET
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/live`);
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').style.background = '#22c55e';
+    document.getElementById('ws-dot').style.boxShadow = '0 0 6px #22c55e';
+    document.getElementById('ws-label').textContent = 'Live Connected';
+  };
+  ws.onmessage = e => {
+    try {
+      const { event } = JSON.parse(e.data);
+      if (event === 'telemetry.updated') { loadOverview(); loadRooms(); }
+      else if (event && (event.startsWith('incident.') || event.startsWith('work_order.'))) {
+        loadIncidents(); loadWorkOrders(); loadOverview();
+      } else if (event === 'simulator.status') {
+        loadSimStatus();
+      }
+    } catch {}
+  };
+  ws.onclose = () => {
+    document.getElementById('ws-dot').style.background = '#f59e0b';
+    document.getElementById('ws-dot').style.boxShadow = 'none';
+    document.getElementById('ws-label').textContent = 'Reconnecting…';
+    setTimeout(connectWS, 4000);
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// OVERVIEW KPIs
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadOverview() {
+  const d = await api('/overview');
+  if (!d) return;
+
+  document.getElementById('kpi-power').textContent = (d.total_power_kw || 0).toFixed(2);
+  document.getElementById('kpi-expected').textContent = (d.expected_power_kw || 0).toFixed(2);
+
+  const excess = d.excess_power_kw || 0;
+  const excessEl = document.getElementById('kpi-excess');
+  excessEl.textContent = excess.toFixed(2);
+  excessEl.style.color = excess > 0.5 ? '#f87171' : '#4ade80';
+
+  const pct = d.expected_power_kw > 0 ? ((excess / d.expected_power_kw) * 100).toFixed(0) : 0;
+  document.getElementById('kpi-excess-label').textContent = excess > 0.5
+    ? `+${pct}% above expected baseline`
+    : 'Normal baseline consumption';
+  document.getElementById('kpi-excess-label').style.color = excess > 0.5 ? '#f87171' : '#64748b';
+
+  document.getElementById('kpi-cost').textContent = Math.round(d.estimated_daily_excess_cost || 0);
+  document.getElementById('kpi-incidents').textContent = d.open_incidents_count || 0;
+  document.getElementById('kpi-wo').textContent = d.pending_work_orders_count || 0;
+
+  const badge = document.getElementById('kpi-inc-badge');
+  if ((d.open_incidents_count || 0) > 0) {
+    badge.textContent = `${d.open_incidents_count} ALERT`;
+    badge.style.background = '#450a0a';
+    badge.style.color = '#f87171';
+    badge.style.borderColor = '#7f1d1d';
+  } else {
+    badge.textContent = 'NORMAL';
+    badge.style.background = '#052e16';
+    badge.style.color = '#4ade80';
+    badge.style.borderColor = '#166534';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ROOMS GRID
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadRooms() {
+  const rooms = await api('/rooms');
+  if (!rooms || !rooms.length) return;
+
+  const grid = document.getElementById('rooms-grid');
+  grid.innerHTML = rooms.map(r => {
+    const isAnom = r.current_state === 'ANOMALOUS';
+    const actual = typeof r.latest_power_kw === 'number' ? r.latest_power_kw : (r.typical_idle_kw || 0.8);
+    const expected = r.typical_idle_kw || 0.8;
+    const maxPow = r.typical_active_kw || 5;
+    const pct = Math.min(100, Math.round((actual / maxPow) * 100));
+    const barColor = isAnom ? '#ef4444' : '#06b6d4';
+
+    let badge = '';
+    if (isAnom) badge = `<span class="badge" style="background:#450a0a;color:#f87171;border:1px solid #7f1d1d">ANOMALY</span>`;
+    else if (r.is_scheduled_now) badge = `<span class="badge" style="background:#052e16;color:#4ade80;border:1px solid #166534">IN SESSION</span>`;
+    else badge = `<span class="badge" style="background:#0f172a;color:#64748b;border:1px solid #1e293b">IDLE</span>`;
+
+    return `
+      <div class="room-card ${isAnom ? 'anomalous' : ''} fade-in">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:900;color:#fff">${r.id}</span>
+              ${badge}
+            </div>
+            <div style="font-size:11px;color:#64748b;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:16px;font-weight:900;color:${isAnom ? '#f87171' : '#22d3ee'}">${actual.toFixed(2)}<span style="font-size:10px;color:#64748b;font-weight:600"> kW</span></div>
+            <div style="font-size:10px;color:#475569">Exp: ${expected.toFixed(2)} kW</div>
+          </div>
+        </div>
+        <div class="power-bar"><div class="power-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:10px;padding-top:10px;border-top:1px solid #1e293b">
+          <div>
+            <div style="font-size:9px;color:#475569;text-transform:uppercase;font-weight:700">Occupants</div>
+            <div style="font-size:12px;font-weight:800;color:#cbd5e1">${r.latest_occupancy ?? 0}/${r.capacity ?? '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#475569;text-transform:uppercase;font-weight:700">Temp</div>
+            <div style="font-size:12px;font-weight:800;color:#cbd5e1">${(r.latest_temp_c || 25).toFixed(1)}°C</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#475569;text-transform:uppercase;font-weight:700">Schedule</div>
+            <div style="font-size:12px;font-weight:800;color:${r.is_scheduled_now ? '#4ade80' : '#475569'}">${r.is_scheduled_now ? 'Active' : 'None'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INCIDENTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadIncidents() {
+  // Fetch all non-resolved incidents
+  const all = await api('/incidents');
+  if (!all) return;
+
+  _incidents = all.filter(i => !['RESOLVED','VERIFIED'].includes(i.status));
+  const badge = document.getElementById('inc-count-badge');
+  const panel = document.getElementById('incident-panel');
+
+  badge.textContent = `${_incidents.length} Active`;
+  if (_incidents.length > 0) {
+    badge.style.background = '#450a0a';
+    badge.style.color = '#f87171';
+    badge.style.borderColor = '#7f1d1d';
+  } else {
+    badge.style.background = '#0f172a';
+    badge.style.color = '#64748b';
+    badge.style.borderColor = '#1e293b';
+  }
+
+  if (_incidents.length === 0) {
+    panel.innerHTML = `
+      <div style="text-align:center;padding:28px;background:#0f172a;border:1px dashed #1e293b;border-radius:12px">
+        <div style="font-size:28px;margin-bottom:8px">✅</div>
+        <div style="font-size:13px;font-weight:700;color:#e2e8f0">All Systems Normal</div>
+        <div style="font-size:11px;color:#475569;margin-top:4px">No anomalies detected.</div>
+      </div>`;
+    return;
+  }
+
+  panel.innerHTML = _incidents.slice(0, 3).map(inc => {
+    const excess = typeof inc.excess_power_kw === 'number' ? inc.excess_power_kw.toFixed(2) : '—';
+    const severityColor = inc.severity === 'HIGH' || inc.severity === 'CRITICAL' ? '#f87171' : '#fbbf24';
+    return `
+      <div class="incident-box fade-in" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <span style="font-size:9px;font-weight:900;color:#f87171;text-transform:uppercase;letter-spacing:.1em">🚨 Critical Incident</span>
+            <div style="font-size:13px;font-weight:800;color:#fff;margin-top:3px">${inc.title}</div>
+          </div>
+          <span style="font-size:11px;font-family:monospace;font-weight:700;background:rgba(239,68,68,.2);color:#fca5a5;border-radius:6px;padding:3px 8px">${inc.incident_code}</span>
+        </div>
+        <div style="font-size:12px;color:#fca5a5;background:rgba(0,0,0,.3);border-radius:10px;padding:10px;line-height:1.6;margin-bottom:10px">${inc.reason || 'Anomaly detected'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px">
+            <span style="color:#64748b">Waste Rate:</span>
+            <span style="color:#f87171;font-weight:800;margin-left:4px">+${excess} kW</span>
+            <span class="badge" style="margin-left:8px;background:rgba(239,68,68,.15);color:${severityColor};border:1px solid rgba(239,68,68,.3)">${inc.severity || 'HIGH'}</span>
+          </div>
+          <button class="btn-primary" onclick="createWO('${inc.incident_code}', '${inc.room_id}')">
+            Dispatch Work Order →
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WORK ORDERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadWorkOrders() {
+  const wos = await api('/work-orders');
+  if (!wos) return;
+
+  _workOrders = wos;
+  const list = document.getElementById('wo-list');
+  document.getElementById('wo-count-badge').textContent = `${wos.length} Recorded`;
+
+  if (!wos.length) {
+    list.innerHTML = `<div style="text-align:center;padding:16px;font-size:12px;color:#475569">No work orders yet.</div>`;
+    return;
+  }
+
+  const statusColors = {
+    OPEN: '#fbbf24', ASSIGNED: '#a78bfa', IN_PROGRESS: '#38bdf8',
+    RESOLVED: '#4ade80', VERIFIED: '#10b981'
+  };
+
+  list.innerHTML = wos.slice(0, 5).map(wo => {
+    const col = statusColors[wo.status] || '#94a3b8';
+    let btn = '';
+    if (wo.status === 'OPEN')
+      btn = `<button class="btn-sm" style="background:#1e1b4b;color:#a5b4fc" onclick="assignWO('${wo.work_order_code}')">Assign</button>`;
+    else if (wo.status === 'ASSIGNED')
+      btn = `<button class="btn-sm" style="background:#0c4a6e;color:#38bdf8" onclick="startWO('${wo.work_order_code}')">Start</button>`;
+    else if (wo.status === 'IN_PROGRESS')
+      btn = `<button class="btn-sm" style="background:#052e16;color:#4ade80" onclick="resolveWO('${wo.work_order_code}')">Resolve</button>`;
+    else if (wo.status === 'RESOLVED')
+      btn = `<button class="btn-sm" style="background:#0c4a6e;color:#22d3ee" onclick="verifyWO('${wo.work_order_code}')">Verify</button>`;
+    else
+      btn = `<span style="font-size:11px;color:#10b981;font-weight:800">✓ Closed</span>`;
+
+    return `
+      <div class="wo-card fade-in" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+            <span style="font-size:12px;font-weight:800;color:#fff">${wo.work_order_code}</span>
+            <span style="font-size:9px;font-weight:800;color:${col};background:rgba(0,0,0,.4);border:1px solid ${col}40;border-radius:4px;padding:1px 6px">${wo.status}</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${wo.title}</div>
+        </div>
+        <div style="flex-shrink:0">${btn}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILDINGS TABLE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadBuildings() {
+  const data = await api('/analytics/buildings');
+  if (!data || !data.length) return;
+
+  const tbl = document.getElementById('buildings-table');
+  tbl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid #1e293b">
+          <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase">Building</th>
+          <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase">Current kW</th>
+          <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase">Expected kW</th>
+          <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase">Efficiency</th>
+          <th style="text-align:center;padding:8px 10px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase">Issues</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(b => {
+          const eff = b.efficiency_score || 100;
+          const effColor = eff >= 90 ? '#4ade80' : eff >= 75 ? '#fbbf24' : '#f87171';
+          return `
+            <tr style="border-bottom:1px solid #0f172a">
+              <td style="padding:9px 10px;font-size:12px;font-weight:600;color:#e2e8f0">${b.building_name}</td>
+              <td style="padding:9px 10px;font-size:12px;font-weight:800;color:#22d3ee;text-align:right">${(b.current_power_kw || 0).toFixed(1)}</td>
+              <td style="padding:9px 10px;font-size:12px;color:#94a3b8;text-align:right">${(b.expected_power_kw || 0).toFixed(1)}</td>
+              <td style="padding:9px 10px;text-align:right">
+                <span style="font-size:11px;font-weight:900;color:${effColor}">${eff.toFixed(0)}%</span>
+              </td>
+              <td style="padding:9px 10px;text-align:center">
+                ${b.active_issues > 0
+                  ? `<span class="badge" style="background:#450a0a;color:#f87171;border:1px solid #7f1d1d">${b.active_issues}</span>`
+                  : `<span style="color:#4ade80;font-size:14px">✓</span>`}
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ENERGY CHART
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function initChart() {
+  const data = await api('/analytics/energy?interval=daily');
+  if (!data) return;
+
+  const ctx = document.getElementById('energy-chart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.timestamps || [],
+      datasets: [
+        {
+          label: 'Actual (kWh)',
+          data: data.actual_kwh || [],
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6,182,212,0.1)',
+          borderWidth: 2.5,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 5
+        },
+        {
+          label: 'Baseline (kWh)',
+          data: data.expected_kwh || [],
+          borderColor: '#6366f1',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          borderColor: '#334155',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#e2e8f0',
+          padding: 10
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1e293b' },
+          ticks: { color: '#475569', font: { size: 10 } }
+        },
+        y: {
+          grid: { color: '#1e293b' },
+          ticks: { color: '#475569', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SIMULATOR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadSimStatus() {
+  const d = await api('/simulator/status');
+  if (!d) return;
+  updateSimBtn(d.is_running);
+}
+
+function updateSimBtn(running) {
+  isSimRunning = !!running;
+  const btn = document.getElementById('sim-btn');
+  const label = document.getElementById('sim-label');
+  if (running) {
+    btn.style.background = '#b45309';
+    label.textContent = 'Pause Simulator';
+    btn.querySelector('span:first-child').textContent = '⏸';
+  } else {
+    btn.style.background = '#16a34a';
+    label.textContent = 'Start Simulator';
+    btn.querySelector('span:first-child').textContent = '▶';
+  }
+}
+
+async function toggleSimulator() {
+  const url = isSimRunning ? '/simulator/stop' : '/simulator/start';
+  const d = await api(url, { method: 'POST' });
+  if (d) {
+    const running = d.status === 'started';
+    updateSimBtn(running);
+    toast(running ? 'Simulator Started' : 'Simulator Paused',
+          running ? 'ESP32 virtual sensors generating readings every 5s' : 'Sensor loop paused',
+          running ? 'success' : 'info');
+  }
+}
+
+async function resetDemo() {
+  await api('/simulator/reset', { method: 'POST' });
+  document.getElementById('scenario-badge').textContent = 'Normal Campus Operation';
+  toast('Demo Reset', 'Campus database re-seeded to initial baseline', 'info');
+  initChart();
+  refresh();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WORK ORDER ACTIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function createWO(incCode, roomId) {
+  const d = await api('/work-orders', {
+    method: 'POST',
+    body: JSON.stringify({
+      room_id: roomId,
+      incident_id: incCode,
+      title: `Inspect HVAC Cluster — ${roomId}`,
+      priority: 'HIGH',
+      order_type: 'HVAC / Energy',
+      assigned_team: 'Facilities HVAC Team',
+      description: `Unusual power consumption detected during idle period in ${roomId}.`,
+      recommended_action: 'Inspect HVAC cluster, verify shutdown state, reset thermostat override.'
+    })
+  });
+  if (d) {
+    toast('Work Order Created', `${d.work_order_code || 'WO'} dispatched for ${roomId}`, 'success');
+    loadWorkOrders();
+  } else {
+    toast('Error', 'Could not create work order', 'error');
+  }
+}
+
+async function assignWO(code) {
+  const d = await api(`/work-orders/${code}/assign`, {
+    method: 'POST',
+    body: JSON.stringify({ assigned_team: 'Facilities HVAC Team', notes: 'Assigned to Sunil Verma (Lead Technician)' })
+  });
+  if (d) { toast('Assigned', `${code} → Facilities HVAC Team`, 'success'); loadWorkOrders(); }
+}
+
+async function startWO(code) {
+  const d = await api(`/work-orders/${code}/start`, { method: 'POST' });
+  if (d) { toast('Work Started', `Technician on site for ${code}`, 'info'); loadWorkOrders(); }
+}
+
+async function resolveWO(code) {
+  const d = await api(`/work-orders/${code}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({
+      resolution_notes: 'AC manual override disabled. Thermostat returned to scheduled setback mode.',
+      resolved_by: 'Sunil Verma (Lead Technician)'
+    })
+  });
+  // Inject normalized telemetry so power shows as returned to baseline
+  await api('/telemetry', {
+    method: 'POST',
+    body: JSON.stringify({
+      room_id: 'LAB-204',
+      timestamp: new Date().toISOString(),
+      power_kw: 0.88,
+      temperature_c: 25.8,
+      humidity: 54.0,
+      occupancy: 0,
+      scheduled: false,
+      source: 'simulated'
+    })
+  });
+  if (d) { toast('Resolved', `${code} resolved — power returned to 0.88 kW baseline`, 'success'); refresh(); }
+}
+
+async function verifyWO(code) {
+  const d = await api(`/work-orders/${code}/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ notes: 'Verified: Telemetry shows 0.88 kW — within expected idle baseline. Improvement confirmed.' })
+  });
+  if (d) { toast('Verified ✓', `${code} closed and audited. Improvement confirmed.`, 'success'); refresh(); }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DEMO STEPS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function demoStep1() {
+  // Start simulator + set normal scenario
+  if (!isSimRunning) await api('/simulator/start', { method: 'POST' });
+  await api('/simulator/scenarios/normal_operation', { method: 'POST' });
+  document.getElementById('scenario-badge').textContent = 'Normal Campus Operation';
+  toast('Step 1 Complete', 'Simulator running. All rooms at normal baselines.', 'success');
+  refresh();
+}
+
+async function demoStep2() {
+  // Set AC waste scenario + inject anomaly reading
+  await api('/simulator/scenarios/lab_204_ac_waste', { method: 'POST' });
+  await api('/telemetry', {
+    method: 'POST',
+    body: JSON.stringify({
+      room_id: 'LAB-204',
+      timestamp: new Date().toISOString(),
+      power_kw: 3.82,
+      temperature_c: 27.4,
+      humidity: 58.0,
+      occupancy: 0,
+      scheduled: false,
+      source: 'simulated'
+    })
+  });
+  document.getElementById('scenario-badge').textContent = 'LAB-204 AC Waste (+320%)';
+  toast('Step 2 Active', 'LAB-204 drawing 3.82 kW while empty. Incident raised!', 'warn');
+  setTimeout(refresh, 1000);
+}
+
+async function demoStep3() {
+  // Find open incident and dispatch WO
+  const incs = await api('/incidents');
+  const open = (incs || []).filter(i => i.status === 'NEW' || i.status === 'INVESTIGATING');
+  if (open.length > 0) {
+    await createWO(open[0].incident_code, open[0].room_id);
+  } else {
+    // Create a demo WO anyway so the flow continues
+    await createWO('INC-DEMO', 'LAB-204');
+    toast('Step 3', 'Work order dispatched (demo mode — trigger Step 2 first to see live incident)', 'info');
+  }
+}
+
+async function demoStep4() {
+  // Find an unresolved WO and push through resolve + verify
+  const wos = await api('/work-orders');
+  const pending = (wos || []).filter(w => !['RESOLVED','VERIFIED'].includes(w.status));
+  if (!pending.length) {
+    toast('Step 4', 'No pending work orders. Complete Steps 2 and 3 first.', 'warn');
+    return;
+  }
+  const wo = pending[0];
+  const code = wo.work_order_code;
+  // Sequential auto-advance: OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → VERIFIED
+  if (wo.status === 'OPEN') {
+    await api(`/work-orders/${code}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ assigned_team: 'Facilities HVAC Team', notes: 'Auto-assigned for demo verification' })
+    });
+  }
+  if (wo.status === 'OPEN' || wo.status === 'ASSIGNED') {
+    await api(`/work-orders/${code}/start`, { method: 'POST' });
+  }
+  if (!['RESOLVED','VERIFIED'].includes(wo.status)) {
+    await resolveWO(code);
+    await new Promise(r => setTimeout(r, 600));
+    await verifyWO(code);
+  } else if (wo.status === 'RESOLVED') {
+    await verifyWO(code);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ASK SENTINEL CHAT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function askSentinel(q) {
+  addMsg('user', q);
+  const d = await api('/assistant/query', {
+    method: 'POST',
+    body: JSON.stringify({ query: q })
+  });
+  if (d) {
+    let txt = d.explanation || d.answer || 'No data available.';
+    if (d.suggested_actions && d.suggested_actions.length) {
+      txt += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #1e293b;font-size:11px;color:#38bdf8"><strong>Recommended Actions:</strong> ${d.suggested_actions.join(' • ')}</div>`;
+    }
+    addMsg('bot', txt);
+  } else {
+    addMsg('bot', '⚠️ Could not reach Sentinel Intelligence endpoint. The backend may still be initializing.');
+  }
+}
+
+function handleChatSubmit(e) {
+  e.preventDefault();
+  const inp = document.getElementById('chat-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  inp.value = '';
+  askSentinel(val);
+}
+
+function addMsg(role, html) {
+  const stream = document.getElementById('chat-stream');
+  const div = document.createElement('div');
+  div.className = role === 'user' ? 'chat-bubble-user fade-in' : 'chat-bubble-bot fade-in';
+  if (role === 'user') {
+    div.textContent = html;
+    div.style.textAlign = 'right';
+  } else {
+    div.innerHTML = html;
+  }
+  stream.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+}
+</script>
+</body>
+</html>

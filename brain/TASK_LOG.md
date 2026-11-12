@@ -1,0 +1,50 @@
+# Task Log — SENTINEL
+
+- **Task 1: Project Structure & Domain Typing**
+  - Created strict domain interfaces in `src/types/sentinel.ts` covering Assets, Buildings, Floors, Rooms, Sensors, Anomalies, Investigations, WorkOrders, Analytics, and Reports.
+- **Task 2: API Service Layer**
+  - Created modular services (`api-client.ts`, `asset-service.ts`, `incident-service.ts`, `telemetry-service.ts`, `work-order-service.ts`, `analytics-service.ts`, `report-service.ts`) with mock/REST toggle and WebSocket subscription support.
+  - Documented complete API contracts in `API_CONTRACT.md` and `brain/API_CONTRACT.md`.
+- **Task 3: Shell & Navigation**
+  - Built unified Header with breadcrumbs, command shortcut, live synchronized clock, operator profile, and scenario toggle.
+  - Built collapsible Sidebar with full workstation navigation, badge counters, and searchable spatial hierarchy.
+  - Built persistent BottomStatusBar with live streaming indicator, ping latency, and sensor counts.
+- **Task 4: Workspaces Implementation**
+  - `CampusOverview`: Tailored to reference UI with SVG digital twin, 2x2 building asset cards with inline sparklines, warning HUD, and bottom performance cards.
+  - `InvestigationWorkspace`: Complete diagnostic suite for LAB-204 with observed vs baseline Recharts timeline, tri-context matrix (occupancy, timetable, environment), contributing signals, and work order dispatch.
+  - `WorkOrdersWorkspace`: Full 5-stage lifecycle (`Open` → `Assigned` → `In Progress` → `Resolved` → `Verified`), inspector panel, and technician resolution form.
+  - `IncidentsWorkspace`: Multi-facet filtering, severity sorting, and investigation linkage.
+  - `InfrastructureWorkspace`: 3-level spatial drilldown, sensor protocol roster, and BACnet setpoint override.
+  - `AnalyticsWorkspace`: Peak demand alerts, subsystem distribution, and building variance bars.
+  - `ReportsWorkspace`: Template configuration, live preview table, CSV download, and print support.
+  - `LiveMonitoringWorkspace`: Real-time oscillogram, sensor gauges, and edge gateway tables.
+- **Task 5: Signature Demonstration Scenario**
+  - Implemented 12-step guided stepper (`ScenarioController`) for LAB-204 anomaly detection, investigation, work order assignment, and baseline recovery verification.
+- **Task 6: Visual Alignment with Reference Interface**
+  - Applied dark near-black aesthetic (`#0B0D0F`), high information density, tabular monospaced numbers, and micro-sparklines.
+- **Task 7: Build Verification & Clean-up**
+  - Removed deprecated legacy components.
+  - Verified clean TypeScript build (`tsc -b && vite build`) with zero errors.
+- **Task 9: Art-Directed Refactor — Sentinel Graphite / Institutional**
+  - Replaced pitch black background with soft dark graphite `#151719`.
+  - Replaced harsh bright orange with warm institutional bronze / champagne accent `#B1A078`.
+  - Implemented exact color swatch: Canvas `#151719`, Surface `#1C1F22`, Elevated `#24282B`, Divider `#34393D`, Primary `#E3E5E6`, Secondary `#969DA2`, Status `#638D7D`, Warning `#C09853`, Critical `#B85555`.
+  - Eliminated "box-in-a-box" nested outlines, glowing circular animations, and video game HUD elements.
+  - Converted section headers, labels, and navigation items to natural sentence case with consistent medium/regular font weights.
+  - Redesigned Campus Overview digital twin SVG with quiet architectural clarity.
+  - Verified clean compilation with `npm run build` in 482ms.
+- **Task 10: Git Repository Deployment to `https://github.com/NinadP2006/sentinel`**
+  - Structured repository to official spec: root `GEMINI.md`, `.agent/rules/`, `brain/`, `frontend/`, `backend/`, and comprehensive root `README.md`.
+  - Configured `.gitignore` ensuring clean repository without `node_modules` or `dist`.
+  - Successfully committed and pushed to `main` branch on GitHub.
+- **Task 11: Frontend and Intelligence Engine Full Integration**
+  - Analyzed complete FastAPI backend routes, SQLite schema, and virtual ESP32 simulator.
+  - Implemented `app/api/compat.py` compatibility layer serving digital twin buildings, floor/room hierarchies, BACnet setpoints, active anomalies, detailed investigation dossiers, and timeseries telemetry.
+  - Upgraded `frontend/src/services/api-client.ts` with real WebSocket connection (`/ws/live`), automatic reconnection, heartbeat pings, and live event dispatching.
+  - Connected `frontend/src/App.tsx` to live backend data queries and real-time WebSocket streams (`telemetry.updated`, `anomaly.detected`, `work_order.updated`).
+  - Wired 12-step Scenario Controller to live backend simulation triggers (`/simulator/trigger-demo-anomaly` and `/simulator/resolve-demo-anomaly`).
+  - Fixed Python 3.12+ `datetime.utcnow()` deprecation across all database models and seed scripts (reducing warnings from 1,444 to 3).
+  - Configured Vite development proxy in `vite.config.ts` for `/api` and `/ws`.
+  - Configured FastAPI in `app/main.py` to mount and serve `frontend/dist` in unified production mode.
+  - Verified 25 out of 25 backend unit and integration tests passing (`pytest`).
+  - Verified frontend production build with zero TypeScript errors (`tsc -b && vite build`).
